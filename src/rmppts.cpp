@@ -361,6 +361,35 @@ QQuickItem *createFrom(QQmlEngine *eng, QQmlContext *ctx, const char *url, QQuic
     return item;
 }
 
+// ---- Settings rail order shared by the rmpp add-ons ----
+// Every rmpp row carries an int property "rmppOrder": rmpp-bt 100, rmpp-tailscale 200, rmpp-lang 300 (Languages),
+// rmpp-hwr 400 (Handwriting). Each add-on places only its own row, right after the rmpp row with the highest order
+// below its own, else after Wi-Fi, so the order is the same whichever add-on injects first (no later re-sorting,
+// no rows jumping after the page is shown). Rows without the property are recognised by class / objectName.
+int railOrder(QQuickItem *k) {
+    const QVariant v = k->property("rmppOrder");
+    if (v.isValid()) return v.toInt();
+    const char *cls = k->metaObject()->className();
+    if (qstrncmp(cls, "BtSidebarItem", 13) == 0) return 100;
+    if (qstrncmp(cls, "TsSidebarItem", 13) == 0) return 200;
+    if (k->objectName() == QLatin1String("rmppHwrSidebarItem")) return 400;
+    return -1;
+}
+
+void placeRow(QQuickItem *col, QQuickItem *row) {
+    const int mine = railOrder(row);
+    QQuickItem *after = nullptr, *wifi = nullptr;
+    int best = -1;
+    for (QQuickItem *k : col->childItems()) {
+        if (k == row) continue;
+        if (k->property("iconSource").toString().contains(QLatin1String("/wifi"))) wifi = k;
+        const int o = railOrder(k);
+        if (o >= 0 && o < mine && o > best) { best = o; after = k; }
+    }
+    if (!after) after = wifi;
+    if (after) row->stackAfter(after);
+}
+
 void tryInject() {
     const auto windows = QGuiApplication::allWindows();
     for (QWindow *w : windows) {
@@ -386,23 +415,7 @@ void tryInject() {
         ctx->setContextProperty("payloadLoaderRef", loader);
 
         QQuickItem *row = createFrom(eng, ctx, "qrc:/rmppts/qml/TsSidebarItem.qml", col);
-        if (row) {
-            // After Bluetooth (rmpp-bt) if present, else after Wi-Fi. Other add-ons may inject later,
-            // so look again a few times.
-            auto place = [col, row] {
-                QQuickItem *after = nullptr;
-                const auto kids = col->childItems();
-                for (QQuickItem *k : kids) {
-                    const QString icon = k->property("iconSource").toString();
-                    if (k == row) continue;
-                    if (icon.contains(QLatin1String("bluetooth"))) { after = k; break; }
-                    if (!after && icon.contains(QLatin1String("wifi"))) after = k;
-                }
-                if (after) row->stackAfter(after);
-            };
-            place();
-            for (int ms : {1500, 4000}) QTimer::singleShot(ms, row, place);
-        }
+        if (row) placeRow(col, row);
         QQuickItem *page = createFrom(eng, ctx, "qrc:/rmppts/qml/TsPage.qml", settings);
         qWarning("[rmpp-tailscale] injected into Settings: row=%s page=%s", row ? "ok" : "FAILED", page ? "ok" : "FAILED");
     }

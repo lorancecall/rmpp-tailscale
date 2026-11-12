@@ -1,4 +1,4 @@
-// Sidebar row injected into the Settings page (after Bluetooth from rmpp-bt, else after Wi-Fi).
+// Sidebar row injected into the Settings page, placed by the order shared by the rmpp add-ons (rmppOrder).
 // Context properties: ts (QQmlPropertyMap), settingsRoot (Settings.qml root item).
 import QtQuick
 import QtQuick.Layouts
@@ -7,6 +7,8 @@ import ark.controls as ArkControls
 
 ArkControls.SidebarItem {
     readonly property int tsPage: 1002
+    // Settings rail order of the rmpp add-ons: rmpp-bt 100, rmpp-tailscale 200, rmpp-lang 300, rmpp-hwr 400.
+    property int rmppOrder: 200
 
     type: ArkTokens.Sidebar.primary
     text: settingsRoot.showLabels ? "Tailscale" : ""
