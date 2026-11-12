@@ -1,5 +1,9 @@
 # rmpp-tailscale
 
+<img src="docs/rmpp-tailscale.gif" alt="rmpp-tailscale demo" width="405">
+
+*Settings › Tailscale: on/off, this tablet's address, SSH and your tailnet's devices (example data).*
+
 [Tailscale](https://tailscale.com) for the reMarkable Paper Pro, with a **Settings > Tailscale** page:
 
 - turn Tailscale on and off (stays that way across reboots)
