@@ -4,7 +4,30 @@
 
 *Settings › Tailscale: on/off, this tablet's address, SSH and your tailnet's devices (example data).*
 
-[Tailscale](https://tailscale.com) for the reMarkable Paper Pro, with a **Settings > Tailscale** page:
+[Tailscale](https://tailscale.com) for the reMarkable Paper Pro, with a **Settings > Tailscale** page: log in by
+scanning a QR code, see your tailnet, and reach the tablet over SSH from anywhere. Runs without xovi and keeps
+working after a reboot.
+
+Tested on reMarkable Paper Pro, OS 3.29.1.
+
+> Part of the **rmpp add-ons**, built on [rmpp-packages](https://github.com/lorancecall/rmpp-packages): it is
+> installed by rmpp setup, loaded into xochitl at every boot by rmpp-preload (no xovi), and kept up to date with
+> Vellum. How that differs from xovi: [how it works](https://github.com/lorancecall/rmpp-packages/blob/main/docs/how-it-works.md).
+
+## Install
+
+Start at **[rmpp-packages](https://github.com/lorancecall/rmpp-packages#install)**: it explains developer mode and
+has **rmpp setup**, the installer for all rmpp add-ons.
+
+- In rmpp setup, tick **Tailscale VPN and remote SSH** (rmpp-tailscale), then open Settings > Tailscale, turn it
+  on and scan the QR code.
+- After a reMarkable OS update: **Restore** in rmpp setup.
+- Other ways (Vellum on the command line, building and installing it yourself) and removal:
+  [docs/install.md](docs/install.md).
+
+## Use
+
+Settings > **Tailscale**:
 
 - turn Tailscale on and off (stays that way across reboots)
 - log in from the tablet: the page shows the login link as a **QR code** to scan with your phone
@@ -13,22 +36,7 @@
 - check for and install Tailscale updates (`tailscale update`, signed packages from pkgs.tailscale.com)
 - log out
 
-Tested on OS 3.29 (Qt 6.10).
-
-> Part of the **rmpp add-ons**, built on [rmpp-packages](https://github.com/lorancecall/rmpp-packages): it is
-> installed by rmpp setup, loaded into xochitl at every boot by rmpp-preload (no xovi), and kept up to date with
-> Vellum. How that differs from xovi: [how it works](https://github.com/lorancecall/rmpp-packages/blob/main/docs/how-it-works.md).
-
-## Install
-
-Install **rmpp setup** (desktop app or a one-line script) from
-[rmpp-packages](https://github.com/lorancecall/rmpp-packages#install) and tick **rmpp-tailscale**.
-It needs developer mode; the rmpp-packages page explains it.
-Then open Settings > Tailscale, turn it on and scan the QR code. The binaries take about 70 MB in /home.
-After a reMarkable OS update, press **Restore** in rmpp setup.
-
-Other ways (Vellum on the command line, building and installing it yourself) and removal:
-[docs/install.md](docs/install.md).
+The Tailscale binaries take about 70 MB in /home.
 
 ## How it works
 
@@ -46,7 +54,7 @@ Other ways (Vellum on the command line, building and installing it yourself) and
 
 ## Build
 
-See [docs/install.md](docs/install.md#build-and-install-by-hand).
+Building and the development install: [docs/install.md](docs/install.md#build-and-install-by-hand).
 
 ## License
 
