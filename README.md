@@ -13,17 +13,22 @@
 - check for and install Tailscale updates (`tailscale update`, signed packages from pkgs.tailscale.com)
 - log out
 
-Tested on OS 3.29 (Qt 6.10). Needs developer mode (for SSH) and [Vellum](https://github.com/vellum-dev/vellum).
+Tested on OS 3.29 (Qt 6.10).
+
+> Part of the **rmpp add-ons**, built on [rmpp-packages](https://github.com/lorancecall/rmpp-packages): it is
+> installed by rmpp setup, loaded into xochitl at every boot by rmpp-preload (no xovi), and kept up to date with
+> Vellum. How that differs from xovi: [how it works](https://github.com/lorancecall/rmpp-packages/blob/main/docs/how-it-works.md).
 
 ## Install
 
-With the rmpp package repository set up (see [rmpp-packages](https://github.com/lorancecall/rmpp-packages)):
+Install **rmpp setup** (desktop app or a one-line script) from
+[rmpp-packages](https://github.com/lorancecall/rmpp-packages#install) and tick **rmpp-tailscale**.
+It needs developer mode; the rmpp-packages page explains it.
+Then open Settings > Tailscale, turn it on and scan the QR code. The binaries take about 70 MB in /home.
+After a reMarkable OS update, press **Restore** in rmpp setup.
 
-```sh
-vellum add rmpp-tailscale
-```
-
-Then open Settings > Tailscale, turn it on and scan the QR code.
+Other ways (Vellum on the command line, building and installing it yourself) and removal:
+[docs/install.md](docs/install.md).
 
 ## How it works
 
@@ -41,13 +46,7 @@ Then open Settings > Tailscale, turn it on and scan the QR code.
 
 ## Build
 
-```sh
-./build.sh     # cross-build with ../sdk (Arm GNU aarch64 + Qt 6.10 headers + device libs)
-./deploy.sh    # development only: copy to the tablet (ssh alias rmpp) and restart xochitl
-```
-
-The package recipe (VELBUILD, systemd units) is in
-[rmpp-packages/packages/rmpp-tailscale](https://github.com/lorancecall/rmpp-packages/tree/main/packages/rmpp-tailscale).
+See [docs/install.md](docs/install.md#build-and-install-by-hand).
 
 ## License
 
