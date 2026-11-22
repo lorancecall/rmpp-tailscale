@@ -2,13 +2,14 @@
 
 <img src="docs/rmpp-tailscale.gif" alt="rmpp-tailscale demo" width="405">
 
-*Settings › Tailscale: on/off, this tablet's address, SSH and your tailnet's devices (example data).*
+*Settings › Tailscale: on/off, this Paper Pro's address, SSH and your tailnet's devices (example data).*
 
 [Tailscale](https://tailscale.com) for the reMarkable Paper Pro, with a **Settings > Tailscale** page: log in by
-scanning a QR code, see your tailnet, and reach the tablet over SSH from anywhere. Runs without xovi and keeps
+scanning a QR code, see your tailnet, and reach the Paper Pro over SSH from anywhere. Runs without xovi and keeps
 working after a reboot.
 
-Tested on reMarkable Paper Pro, OS 3.29.1.
+Made for and tested on the reMarkable Paper Pro with OS 3.29.1 only; other reMarkable models are not supported
+and their compatibility is not guaranteed. Following newer OS versions happens when I have time, and may not happen.
 
 > Part of the **rmpp add-ons**, built on [rmpp-packages](https://github.com/lorancecall/rmpp-packages): it is
 > installed by rmpp setup, loaded into xochitl at every boot by rmpp-preload (no xovi), and kept up to date with
@@ -30,9 +31,9 @@ has **rmpp setup**, the installer for all rmpp add-ons.
 Settings > **Tailscale**:
 
 - turn Tailscale on and off (stays that way across reboots)
-- log in from the tablet: the page shows the login link as a **QR code** to scan with your phone
+- log in from the Paper Pro: the page shows the login link as a **QR code** to scan with your phone
 - status: device name, Tailscale IPs, account and tailnet, the other devices on your tailnet
-- **SSH over Tailscale**: `ssh root@<tablet's Tailscale IP or MagicDNS name>` from anywhere on your tailnet
+- **SSH over Tailscale**: `ssh root@<Paper Pro's Tailscale IP or MagicDNS name>` from anywhere on your tailnet
 - check for and install Tailscale updates (`tailscale update`, signed packages from pkgs.tailscale.com)
 - log out
 
@@ -41,7 +42,7 @@ The Tailscale binaries take about 70 MB in /home.
 ## How it works
 
 - The Paper Pro kernel has no TUN driver, so `tailscaled` runs with `--tun=userspace-networking`.
-  Other devices can reach the tablet; programs on the tablet reach the tailnet through the SOCKS5 proxy
+  Other devices can reach the Paper Pro; programs on the Paper Pro reach the tailnet through the SOCKS5 proxy
   at `localhost:1055`.
 - `rmpp-tailscaled.service` runs the official static arm64 binaries from `/home/root/.vellum/share/rmpp-tailscale`
   (the root file system is too small and read-only). State is in `/home/root/.local/share/rmpp-tailscale`.
