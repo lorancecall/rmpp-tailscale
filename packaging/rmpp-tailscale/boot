@@ -1,0 +1,12 @@
+#!/bin/sh
+# rmpp-tailscale boot hook (/usr/lib/rmpp/boot.d/50-rmpp-tailscale): rmpp-preload's launcher runs it once per
+# boot, and the package scripts after installing. The units go to /run/systemd/system (RAM). Settings > Tailscale
+# keeps using `systemctl start/stop rmpp-tailscaled.service`. The unit waits for /home (binaries, state and the
+# on/off flag live there) and starts only when the flag says so; this hook itself must not wait for /home.
+U=/usr/lib/rmpp/units/rmpp-tailscale
+mkdir -p /run/systemd/system
+for u in rmpp-tailscaled.service rmpp-tailscale-ssh.socket rmpp-tailscale-ssh@.service; do
+	cp "$U/$u" "/run/systemd/system/$u.new" && mv -f "/run/systemd/system/$u.new" "/run/systemd/system/$u"
+done
+systemctl daemon-reload
+systemctl --no-block start rmpp-tailscaled.service

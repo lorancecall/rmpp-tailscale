@@ -1,0 +1,157 @@
+maintainer="lorancecall <84116812+lorancecall@users.noreply.github.com>"
+pkgname=rmpp-tailscale
+pkgver=0.1.1
+pkgrel=1
+_tsver=1.104.5
+upstream_author="lorancecall"
+category="network"
+pkgdesc="Tailscale (userspace networking) with a Settings page: on/off, QR-code login, status and devices"
+url="https://github.com/lorancecall/rmpp-tailscale"
+arch="aarch64"
+license="GPL-3.0-only AND BSD-3-Clause AND MIT"
+depends="rmpp-preload>=0.2.0 !rm1 !rm2 mount-utils remarkable-os>=3.29 remarkable-os<3.30 !tailscale"
+source="
+https://github.com/$upstream_author/rmpp-tailscale/releases/download/v$pkgver/librmpp-tailscale.so
+https://github.com/$upstream_author/rmpp-tailscale/releases/download/v$pkgver/rmpp-tailscale.rcc
+https://raw.githubusercontent.com/$upstream_author/rmpp-tailscale/v$pkgver/LICENSE
+https://pkgs.tailscale.com/stable/tailscale_${_tsver}_arm64.tgz
+rmpp-tailscaled.service
+rmpp-tailscale-ssh.socket
+rmpp-tailscale-ssh@.service
+boot
+rmpp-tailscale.env
+"
+options="!check !fhs !strip"
+
+# Each lifecycle function runs as its own script: no shared helpers, every step is written out.
+# Never `systemctl stop xochitl`: that powers the tablet off. Scripts never restart xochitl themselves: they re-arm
+# the transient timer rmpp-restart-xochitl (15 s, runs /usr/lib/rmpp/restart), so a transaction restarts it once.
+# Root file system: everything under /usr/lib/rmpp (rmpp-preload's layout); a file xochitl may have loaded is
+# renamed to *.old or moved to /usr/lib/rmpp/.trash, never deleted, and /usr/lib/rmpp/restart deletes it after the
+# restart. Plain `mount -o remount,rw|ro /`: Vellum's mount-rw unmounts /etc recursively, which also drops the
+# /etc/dropbear bind mount (SSH host key) until the next boot.
+# The Tailscale binaries (~70 MB) stay in /home (Vellum's share folder); the unit waits for /home.
+# SSH: rmpp-tailscale-ssh.socket listens on lo (tailscaled hands incoming connections to loopback).
+# Tailscale starts off; it is turned on from Settings > Tailscale (flag file in /home/root/.config/rmpp-tailscale).
+
+package() {
+	install -Dm755 "$srcdir"/librmpp-tailscale.so "$pkgdir"/home/root/.vellum/share/rmpp-tailscale/librmpp-tailscale.so
+	install -Dm644 "$srcdir"/rmpp-tailscale.rcc "$pkgdir"/home/root/.vellum/share/rmpp-tailscale/rmpp-tailscale.rcc
+	install -Dm644 "$srcdir"/rmpp-tailscaled.service "$pkgdir"/home/root/.vellum/share/rmpp-tailscale/rmpp-tailscaled.service
+	install -Dm644 "$srcdir"/rmpp-tailscale-ssh.socket "$pkgdir"/home/root/.vellum/share/rmpp-tailscale/rmpp-tailscale-ssh.socket
+	install -Dm644 "$srcdir"/rmpp-tailscale-ssh@.service "$pkgdir"/home/root/.vellum/share/rmpp-tailscale/rmpp-tailscale-ssh@.service
+	install -Dm755 "$srcdir"/tailscale_${_tsver}_arm64/tailscale "$pkgdir"/home/root/.vellum/share/rmpp-tailscale/tailscale
+	install -Dm755 "$srcdir"/tailscale_${_tsver}_arm64/tailscaled "$pkgdir"/home/root/.vellum/share/rmpp-tailscale/tailscaled
+	install -Dm644 "$srcdir"/rmpp-tailscale.env "$pkgdir"/home/root/.vellum/share/rmpp-tailscale/rmpp-tailscale.env
+	install -Dm755 "$srcdir"/boot "$pkgdir"/home/root/.vellum/share/rmpp-tailscale/boot
+
+	install -Dm644 "$srcdir"/LICENSE "$pkgdir"/home/root/.vellum/licenses/$pkgname/LICENSE
+	printf '%s\n' "https://github.com/$upstream_author/rmpp-tailscale" "https://github.com/tailscale/tailscale (BSD-3-Clause)" \
+		"https://github.com/nayuki/QR-Code-generator (MIT)" > "$pkgdir"/home/root/.vellum/licenses/$pkgname/SOURCES
+}
+
+postinstall() {
+	mount -o remount,rw /
+	# older versions put files in /usr/lib/rmpp-tailscale, /usr/lib/systemd/system/rmpp-tailscaled.service: set aside (deleted after the restart)
+	if [ -e /usr/lib/rmpp-tailscale ] || [ -e /usr/lib/systemd/system/rmpp-tailscaled.service ]; then
+		mkdir -p /usr/lib/rmpp/.trash
+		rm -f /usr/lib/rmpp-preload.d/50-rmpp-tailscale.so /usr/lib/systemd/system/multi-user.target.wants/rmpp-tailscaled.service /usr/lib/systemd/system/rmpp-tailscaled.service /usr/lib/systemd/system/rmpp-tailscale-ssh.socket /usr/lib/systemd/system/rmpp-tailscale-ssh@.service
+		[ ! -e /usr/lib/rmpp-tailscale ] || mv /usr/lib/rmpp-tailscale /usr/lib/rmpp/.trash/usr_lib_rmpp-tailscale.$$
+		[ ! -e /usr/lib/systemd/system/rmpp-tailscaled.service ] || mv /usr/lib/systemd/system/rmpp-tailscaled.service /usr/lib/rmpp/.trash/usr_lib_systemd_system_rmpp-tailscaled.service.$$
+	fi
+	mkdir -p /usr/lib/rmpp/rmpp-tailscale /usr/lib/rmpp/preload.d /usr/lib/rmpp/env.d /usr/lib/rmpp/boot.d /usr/lib/rmpp/units/rmpp-tailscale
+	cp "/home/root/.vellum/share/rmpp-tailscale"/librmpp-tailscale.so /usr/lib/rmpp/rmpp-tailscale/librmpp-tailscale.so.new && chmod 755 /usr/lib/rmpp/rmpp-tailscale/librmpp-tailscale.so.new && { [ ! -e /usr/lib/rmpp/rmpp-tailscale/librmpp-tailscale.so ] || mv -f /usr/lib/rmpp/rmpp-tailscale/librmpp-tailscale.so /usr/lib/rmpp/rmpp-tailscale/librmpp-tailscale.so.old; } && mv -f /usr/lib/rmpp/rmpp-tailscale/librmpp-tailscale.so.new /usr/lib/rmpp/rmpp-tailscale/librmpp-tailscale.so
+	cp "/home/root/.vellum/share/rmpp-tailscale"/rmpp-tailscale.rcc /usr/lib/rmpp/rmpp-tailscale/rmpp-tailscale.rcc.new && chmod 644 /usr/lib/rmpp/rmpp-tailscale/rmpp-tailscale.rcc.new && { [ ! -e /usr/lib/rmpp/rmpp-tailscale/rmpp-tailscale.rcc ] || mv -f /usr/lib/rmpp/rmpp-tailscale/rmpp-tailscale.rcc /usr/lib/rmpp/rmpp-tailscale/rmpp-tailscale.rcc.old; } && mv -f /usr/lib/rmpp/rmpp-tailscale/rmpp-tailscale.rcc.new /usr/lib/rmpp/rmpp-tailscale/rmpp-tailscale.rcc
+	ln -sfn ../rmpp-tailscale/librmpp-tailscale.so /usr/lib/rmpp/preload.d/50-rmpp-tailscale.so
+	cp "/home/root/.vellum/share/rmpp-tailscale"/rmpp-tailscale.env /usr/lib/rmpp/env.d/rmpp-tailscale.env.new && chmod 644 /usr/lib/rmpp/env.d/rmpp-tailscale.env.new && { [ ! -e /usr/lib/rmpp/env.d/rmpp-tailscale.env ] || mv -f /usr/lib/rmpp/env.d/rmpp-tailscale.env /usr/lib/rmpp/env.d/rmpp-tailscale.env.old; } && mv -f /usr/lib/rmpp/env.d/rmpp-tailscale.env.new /usr/lib/rmpp/env.d/rmpp-tailscale.env
+	cp "/home/root/.vellum/share/rmpp-tailscale"/boot /usr/lib/rmpp/boot.d/50-rmpp-tailscale.new && chmod 755 /usr/lib/rmpp/boot.d/50-rmpp-tailscale.new && { [ ! -e /usr/lib/rmpp/boot.d/50-rmpp-tailscale ] || mv -f /usr/lib/rmpp/boot.d/50-rmpp-tailscale /usr/lib/rmpp/boot.d/50-rmpp-tailscale.old; } && mv -f /usr/lib/rmpp/boot.d/50-rmpp-tailscale.new /usr/lib/rmpp/boot.d/50-rmpp-tailscale
+	cp "/home/root/.vellum/share/rmpp-tailscale"/rmpp-tailscaled.service /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscaled.service.new && chmod 644 /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscaled.service.new && { [ ! -e /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscaled.service ] || mv -f /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscaled.service /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscaled.service.old; } && mv -f /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscaled.service.new /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscaled.service
+	cp "/home/root/.vellum/share/rmpp-tailscale"/rmpp-tailscale-ssh.socket /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscale-ssh.socket.new && chmod 644 /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscale-ssh.socket.new && { [ ! -e /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscale-ssh.socket ] || mv -f /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscale-ssh.socket /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscale-ssh.socket.old; } && mv -f /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscale-ssh.socket.new /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscale-ssh.socket
+	cp "/home/root/.vellum/share/rmpp-tailscale"/rmpp-tailscale-ssh@.service /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscale-ssh@.service.new && chmod 644 /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscale-ssh@.service.new && { [ ! -e /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscale-ssh@.service ] || mv -f /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscale-ssh@.service /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscale-ssh@.service.old; } && mv -f /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscale-ssh@.service.new /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscale-ssh@.service
+	sync
+	mount -o remount,ro / || echo "note: / stays read-write until xochitl restarts"
+	/usr/lib/rmpp/boot.d/50-rmpp-tailscale
+	systemctl try-restart rmpp-tailscaled.service 2>/dev/null || true
+	# one xochitl restart per Vellum transaction: (re)arm the timer, so the last package script wins
+	systemctl stop rmpp-restart-xochitl.timer 2>/dev/null || true
+	systemd-run --quiet --unit=rmpp-restart-xochitl --on-active=15 --timer-property=AccuracySec=1s \
+		/bin/sh -c '[ -x /usr/lib/rmpp/restart ] && exec /usr/lib/rmpp/restart; systemctl reset-failed xochitl; systemctl restart xochitl' || \
+		{ systemctl reset-failed xochitl 2>/dev/null || true; systemctl restart xochitl; }
+}
+
+postupgrade() {
+	mount -o remount,rw /
+	# older versions put files in /usr/lib/rmpp-tailscale, /usr/lib/systemd/system/rmpp-tailscaled.service: set aside (deleted after the restart)
+	if [ -e /usr/lib/rmpp-tailscale ] || [ -e /usr/lib/systemd/system/rmpp-tailscaled.service ]; then
+		mkdir -p /usr/lib/rmpp/.trash
+		rm -f /usr/lib/rmpp-preload.d/50-rmpp-tailscale.so /usr/lib/systemd/system/multi-user.target.wants/rmpp-tailscaled.service /usr/lib/systemd/system/rmpp-tailscaled.service /usr/lib/systemd/system/rmpp-tailscale-ssh.socket /usr/lib/systemd/system/rmpp-tailscale-ssh@.service
+		[ ! -e /usr/lib/rmpp-tailscale ] || mv /usr/lib/rmpp-tailscale /usr/lib/rmpp/.trash/usr_lib_rmpp-tailscale.$$
+		[ ! -e /usr/lib/systemd/system/rmpp-tailscaled.service ] || mv /usr/lib/systemd/system/rmpp-tailscaled.service /usr/lib/rmpp/.trash/usr_lib_systemd_system_rmpp-tailscaled.service.$$
+	fi
+	mkdir -p /usr/lib/rmpp/rmpp-tailscale /usr/lib/rmpp/preload.d /usr/lib/rmpp/env.d /usr/lib/rmpp/boot.d /usr/lib/rmpp/units/rmpp-tailscale
+	cp "/home/root/.vellum/share/rmpp-tailscale"/librmpp-tailscale.so /usr/lib/rmpp/rmpp-tailscale/librmpp-tailscale.so.new && chmod 755 /usr/lib/rmpp/rmpp-tailscale/librmpp-tailscale.so.new && { [ ! -e /usr/lib/rmpp/rmpp-tailscale/librmpp-tailscale.so ] || mv -f /usr/lib/rmpp/rmpp-tailscale/librmpp-tailscale.so /usr/lib/rmpp/rmpp-tailscale/librmpp-tailscale.so.old; } && mv -f /usr/lib/rmpp/rmpp-tailscale/librmpp-tailscale.so.new /usr/lib/rmpp/rmpp-tailscale/librmpp-tailscale.so
+	cp "/home/root/.vellum/share/rmpp-tailscale"/rmpp-tailscale.rcc /usr/lib/rmpp/rmpp-tailscale/rmpp-tailscale.rcc.new && chmod 644 /usr/lib/rmpp/rmpp-tailscale/rmpp-tailscale.rcc.new && { [ ! -e /usr/lib/rmpp/rmpp-tailscale/rmpp-tailscale.rcc ] || mv -f /usr/lib/rmpp/rmpp-tailscale/rmpp-tailscale.rcc /usr/lib/rmpp/rmpp-tailscale/rmpp-tailscale.rcc.old; } && mv -f /usr/lib/rmpp/rmpp-tailscale/rmpp-tailscale.rcc.new /usr/lib/rmpp/rmpp-tailscale/rmpp-tailscale.rcc
+	ln -sfn ../rmpp-tailscale/librmpp-tailscale.so /usr/lib/rmpp/preload.d/50-rmpp-tailscale.so
+	cp "/home/root/.vellum/share/rmpp-tailscale"/rmpp-tailscale.env /usr/lib/rmpp/env.d/rmpp-tailscale.env.new && chmod 644 /usr/lib/rmpp/env.d/rmpp-tailscale.env.new && { [ ! -e /usr/lib/rmpp/env.d/rmpp-tailscale.env ] || mv -f /usr/lib/rmpp/env.d/rmpp-tailscale.env /usr/lib/rmpp/env.d/rmpp-tailscale.env.old; } && mv -f /usr/lib/rmpp/env.d/rmpp-tailscale.env.new /usr/lib/rmpp/env.d/rmpp-tailscale.env
+	cp "/home/root/.vellum/share/rmpp-tailscale"/boot /usr/lib/rmpp/boot.d/50-rmpp-tailscale.new && chmod 755 /usr/lib/rmpp/boot.d/50-rmpp-tailscale.new && { [ ! -e /usr/lib/rmpp/boot.d/50-rmpp-tailscale ] || mv -f /usr/lib/rmpp/boot.d/50-rmpp-tailscale /usr/lib/rmpp/boot.d/50-rmpp-tailscale.old; } && mv -f /usr/lib/rmpp/boot.d/50-rmpp-tailscale.new /usr/lib/rmpp/boot.d/50-rmpp-tailscale
+	cp "/home/root/.vellum/share/rmpp-tailscale"/rmpp-tailscaled.service /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscaled.service.new && chmod 644 /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscaled.service.new && { [ ! -e /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscaled.service ] || mv -f /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscaled.service /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscaled.service.old; } && mv -f /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscaled.service.new /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscaled.service
+	cp "/home/root/.vellum/share/rmpp-tailscale"/rmpp-tailscale-ssh.socket /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscale-ssh.socket.new && chmod 644 /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscale-ssh.socket.new && { [ ! -e /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscale-ssh.socket ] || mv -f /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscale-ssh.socket /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscale-ssh.socket.old; } && mv -f /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscale-ssh.socket.new /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscale-ssh.socket
+	cp "/home/root/.vellum/share/rmpp-tailscale"/rmpp-tailscale-ssh@.service /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscale-ssh@.service.new && chmod 644 /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscale-ssh@.service.new && { [ ! -e /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscale-ssh@.service ] || mv -f /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscale-ssh@.service /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscale-ssh@.service.old; } && mv -f /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscale-ssh@.service.new /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscale-ssh@.service
+	sync
+	mount -o remount,ro / || echo "note: / stays read-write until xochitl restarts"
+	/usr/lib/rmpp/boot.d/50-rmpp-tailscale
+	systemctl try-restart rmpp-tailscaled.service 2>/dev/null || true
+	# one xochitl restart per Vellum transaction: (re)arm the timer, so the last package script wins
+	systemctl stop rmpp-restart-xochitl.timer 2>/dev/null || true
+	systemd-run --quiet --unit=rmpp-restart-xochitl --on-active=15 --timer-property=AccuracySec=1s \
+		/bin/sh -c '[ -x /usr/lib/rmpp/restart ] && exec /usr/lib/rmpp/restart; systemctl reset-failed xochitl; systemctl restart xochitl' || \
+		{ systemctl reset-failed xochitl 2>/dev/null || true; systemctl restart xochitl; }
+}
+
+# `vellum reenable` after an OS update: the root file system is already writable here; rmpp-preload's
+# postosupgrade restarts xochitl, which runs the boot hooks again.
+postosupgrade() {
+	mkdir -p /usr/lib/rmpp/rmpp-tailscale /usr/lib/rmpp/preload.d /usr/lib/rmpp/env.d /usr/lib/rmpp/boot.d /usr/lib/rmpp/units/rmpp-tailscale
+	cp "/home/root/.vellum/share/rmpp-tailscale"/librmpp-tailscale.so /usr/lib/rmpp/rmpp-tailscale/librmpp-tailscale.so.new && chmod 755 /usr/lib/rmpp/rmpp-tailscale/librmpp-tailscale.so.new && { [ ! -e /usr/lib/rmpp/rmpp-tailscale/librmpp-tailscale.so ] || mv -f /usr/lib/rmpp/rmpp-tailscale/librmpp-tailscale.so /usr/lib/rmpp/rmpp-tailscale/librmpp-tailscale.so.old; } && mv -f /usr/lib/rmpp/rmpp-tailscale/librmpp-tailscale.so.new /usr/lib/rmpp/rmpp-tailscale/librmpp-tailscale.so
+	cp "/home/root/.vellum/share/rmpp-tailscale"/rmpp-tailscale.rcc /usr/lib/rmpp/rmpp-tailscale/rmpp-tailscale.rcc.new && chmod 644 /usr/lib/rmpp/rmpp-tailscale/rmpp-tailscale.rcc.new && { [ ! -e /usr/lib/rmpp/rmpp-tailscale/rmpp-tailscale.rcc ] || mv -f /usr/lib/rmpp/rmpp-tailscale/rmpp-tailscale.rcc /usr/lib/rmpp/rmpp-tailscale/rmpp-tailscale.rcc.old; } && mv -f /usr/lib/rmpp/rmpp-tailscale/rmpp-tailscale.rcc.new /usr/lib/rmpp/rmpp-tailscale/rmpp-tailscale.rcc
+	ln -sfn ../rmpp-tailscale/librmpp-tailscale.so /usr/lib/rmpp/preload.d/50-rmpp-tailscale.so
+	cp "/home/root/.vellum/share/rmpp-tailscale"/rmpp-tailscale.env /usr/lib/rmpp/env.d/rmpp-tailscale.env.new && chmod 644 /usr/lib/rmpp/env.d/rmpp-tailscale.env.new && { [ ! -e /usr/lib/rmpp/env.d/rmpp-tailscale.env ] || mv -f /usr/lib/rmpp/env.d/rmpp-tailscale.env /usr/lib/rmpp/env.d/rmpp-tailscale.env.old; } && mv -f /usr/lib/rmpp/env.d/rmpp-tailscale.env.new /usr/lib/rmpp/env.d/rmpp-tailscale.env
+	cp "/home/root/.vellum/share/rmpp-tailscale"/boot /usr/lib/rmpp/boot.d/50-rmpp-tailscale.new && chmod 755 /usr/lib/rmpp/boot.d/50-rmpp-tailscale.new && { [ ! -e /usr/lib/rmpp/boot.d/50-rmpp-tailscale ] || mv -f /usr/lib/rmpp/boot.d/50-rmpp-tailscale /usr/lib/rmpp/boot.d/50-rmpp-tailscale.old; } && mv -f /usr/lib/rmpp/boot.d/50-rmpp-tailscale.new /usr/lib/rmpp/boot.d/50-rmpp-tailscale
+	cp "/home/root/.vellum/share/rmpp-tailscale"/rmpp-tailscaled.service /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscaled.service.new && chmod 644 /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscaled.service.new && { [ ! -e /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscaled.service ] || mv -f /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscaled.service /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscaled.service.old; } && mv -f /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscaled.service.new /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscaled.service
+	cp "/home/root/.vellum/share/rmpp-tailscale"/rmpp-tailscale-ssh.socket /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscale-ssh.socket.new && chmod 644 /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscale-ssh.socket.new && { [ ! -e /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscale-ssh.socket ] || mv -f /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscale-ssh.socket /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscale-ssh.socket.old; } && mv -f /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscale-ssh.socket.new /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscale-ssh.socket
+	cp "/home/root/.vellum/share/rmpp-tailscale"/rmpp-tailscale-ssh@.service /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscale-ssh@.service.new && chmod 644 /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscale-ssh@.service.new && { [ ! -e /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscale-ssh@.service ] || mv -f /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscale-ssh@.service /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscale-ssh@.service.old; } && mv -f /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscale-ssh@.service.new /usr/lib/rmpp/units/rmpp-tailscale/rmpp-tailscale-ssh@.service
+	sync
+}
+
+predeinstall() {
+	systemctl stop rmpp-tailscaled.service 2>/dev/null || true
+	systemctl stop rmpp-tailscale-ssh.socket 2>/dev/null || true
+	rm -f /run/systemd/system/rmpp-tailscaled.service /run/systemd/system/rmpp-tailscale-ssh.socket /run/systemd/system/rmpp-tailscale-ssh@.service
+	systemctl daemon-reload
+	mount -o remount,rw /
+	mkdir -p /usr/lib/rmpp/.trash
+	rm -f /usr/lib/rmpp/preload.d/50-rmpp-tailscale.so /usr/lib/rmpp/env.d/rmpp-tailscale.env /usr/lib/rmpp/boot.d/50-rmpp-tailscale
+	rm -rf /usr/lib/rmpp/units/rmpp-tailscale
+	[ ! -e /usr/lib/rmpp/rmpp-tailscale ] || mv /usr/lib/rmpp/rmpp-tailscale /usr/lib/rmpp/.trash/rmpp-tailscale.$$
+	sync
+	mount -o remount,ro / || echo "note: / stays read-write until xochitl restarts"
+	# one xochitl restart per Vellum transaction: (re)arm the timer, so the last package script wins
+	systemctl stop rmpp-restart-xochitl.timer 2>/dev/null || true
+	systemd-run --quiet --unit=rmpp-restart-xochitl --on-active=15 --timer-property=AccuracySec=1s \
+		/bin/sh -c '[ -x /usr/lib/rmpp/restart ] && exec /usr/lib/rmpp/restart; systemctl reset-failed xochitl; systemctl restart xochitl' || \
+		{ systemctl reset-failed xochitl 2>/dev/null || true; systemctl restart xochitl; }
+	if [ "$VELLUM_PURGE" = "1" ]; then
+		rm -rf /home/root/.config/rmpp-tailscale /home/root/.local/share/rmpp-tailscale
+	fi
+}
+sha512sums="
+b08c82b4a72f09374924479da8bd091c187749a52c05e66bc9aa5a4084530ab902839157988ed07fca9d0aab49f82fd89e7ca71e217f9eb5b949387b119f3962  librmpp-tailscale.so
+c1e6c770e18ec05a44e87cb1d53470634a3fbea64931d067b041ef964fe201343519de9776a9c56da0db32bcc269cf2ec5ae0a5748e79fa1bb04a9954cf03521  rmpp-tailscale.rcc
+900ef9b1d0e1435fb3aad32f035edf8890538292ebb3104af2feb386fb25df134ed0172a0ec542b2c25ff69a39ae62b34ad17e01b3522067a7328abb25aa4fff  LICENSE
+3de7b4fa0988eabbb1674b918fb6093a1c8fcb7228cde33c7e1ef74ccff292a76ae9ab43a135f9a748d88a51536dc7f3ff187940babdaf2dae578248da5c058f  tailscale_1.104.5_arm64.tgz
+3c3cf9c3ddab71bb2f6e6acfd33edbe86142ec2953acc614b9f981e7bad94e0095e75a6bc7c3179ce5502f6bfa6d7bc08c640462e03dd8ee13bf9e2e5bb0951f  rmpp-tailscaled.service
+590dcbb9b1975d2d0a372756fc1e180d7d9018e0dc8752002ad8539016e53fb9fcf7b9e0724a692474466ceebbfe329e0f2940638ecc6004e0777f3a0248c81f  rmpp-tailscale-ssh.socket
+fef37c519a57fb8e78f128b140a5c2bc76e319bbc36a42537401e73323c0846330145bcd9dfd845a3c9a55d4792cb23e031265200a29c63a15016306b356b030  rmpp-tailscale-ssh@.service
+f1a5d483a2063372fdb5a983dcfc83083dfc78ce9c0e70d499e6764d8577ab7a5a579fb0170defb2d9f3bfef42ab2bfa2a2656623711fbfe8f5246724c614d34  boot
+0f4af70498b5c78fbad8622a9dc3a78c0c14e81703704679a0326796e939731688587d1ba3de075930bd156ced90cd04cdf86aa062be3a7641c8027865da76d2  rmpp-tailscale.env
+"
