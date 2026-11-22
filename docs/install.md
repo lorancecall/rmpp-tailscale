@@ -1,30 +1,38 @@
 # Installing rmpp-tailscale
 
-The usual way is **rmpp setup** from [rmpp-packages](https://github.com/lorancecall/rmpp-packages#install): it sets
-up developer-mode SSH, Vellum and this repository's package, and **Restore** puts the add-ons back after a
-reMarkable OS update. This page is for everything else.
+The usual way is **rmpp setup** from [rmpp-packages](https://github.com/lorancecall/rmpp-packages#install), as the
+desktop app or the script: tick **Tailscale VPN and remote SSH**. This page covers the rest. Steps that are the same for every rmpp
+add-on live in rmpp-packages and are linked here, not repeated.
 
-## With Vellum on the command line
+## Packages
 
-On the tablet, once (adds the rmpp package repository and its signing key to Vellum):
+| Package | Installs with it |
+|---|---|
+| `rmpp-tailscale` | `rmpp-preload` |
+
+Dependencies are installed automatically, in rmpp setup and with `vellum add`. All packages and what needs what:
+[packages.md](https://github.com/lorancecall/rmpp-packages/blob/main/docs/packages.md).
+
+## Without rmpp setup
+
+Follow [manual-install.md](https://github.com/lorancecall/rmpp-packages/blob/main/docs/manual-install.md) (Vellum and the rmpp package repository), then on the tablet:
 
 ```sh
-wget -qO- https://lorancecall.github.io/rmpp-packages/install.sh | sh
+vellum add rmpp-tailscale
 ```
 
-Then:
+## Uninstall
 
-```sh
-vellum add rmpp-tailscale      # install; xochitl restarts once
-vellum upgrade         # later: updates
-vellum reenable        # after a reMarkable OS update
-vellum del rmpp-tailscale      # remove
-```
+- **Just this add-on:** untick it in rmpp setup and press **Remove unticked installed**, or `vellum del rmpp-tailscale`.
+- **What stays:** the Tailscale login and state in `/home/root/.local/share/rmpp-tailscale` and the on/off choice in `/home/root/.config/rmpp-tailscale`. Delete it by hand to start fresh, or use step 3 of
+  [uninstall.md](https://github.com/lorancecall/rmpp-packages/blob/main/docs/uninstall.md).
+- **Everything rmpp, and before a factory reset:** [uninstall.md](https://github.com/lorancecall/rmpp-packages/blob/main/docs/uninstall.md).
 
-The Tailscale binaries (~70 MB) live in `/home/root/.vellum/share/rmpp-tailscale`, its state in
-`/home/root/.local/share/rmpp-tailscale` (kept when the package is removed).
+## Next to other mods
 
-To remove **everything** the rmpp add-ons put on the tablet, use **Remove everything** in rmpp setup.
+`rmpp-tailscale` cannot be installed next to `tailscale` (they do the same): remove those first.
+
+It runs next to xovi and other Vellum packages: [how-it-works.md](https://github.com/lorancecall/rmpp-packages/blob/main/docs/how-it-works.md#next-to-other-mods).
 
 ## Build and install by hand
 
