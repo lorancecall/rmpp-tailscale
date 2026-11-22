@@ -1,0 +1,22 @@
+[Unit]
+Description=Tailscale daemon, userspace networking (rmpp-tailscale)
+Documentation=https://github.com/lorancecall/rmpp-tailscale
+# Binaries and state live in /home (the root file system is small and read-only).
+RequiresMountsFor=/home
+After=network-pre.target NetworkManager.service
+Wants=network-pre.target rmpp-tailscale-ssh.socket
+# Turned on/off from Settings > Tailscale: the flag file survives reboots, /etc does not.
+ConditionPathExists=/home/root/.config/rmpp-tailscale/enabled
+
+[Service]
+# The Paper Pro kernel has no TUN driver: userspace networking only.
+# Incoming connections (ssh, http) to the tablet work; outgoing ones need the SOCKS5 proxy.
+ExecStart=/home/root/.vellum/share/rmpp-tailscale/tailscaled --tun=userspace-networking --statedir=/home/root/.local/share/rmpp-tailscale --socket=/run/rmpp-tailscale/tailscaled.sock --socks5-server=localhost:1055 --port=41641
+ExecStopPost=/home/root/.vellum/share/rmpp-tailscale/tailscaled --cleanup --socket=/run/rmpp-tailscale/tailscaled.sock
+RuntimeDirectory=rmpp-tailscale
+Restart=on-failure
+RestartSec=5
+Nice=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,13 @@
+[Unit]
+Description=SSH over Tailscale (rmpp-tailscale)
+# tailscaled in userspace mode hands incoming connections to 127.0.0.1; reMarkable's dropbear sockets
+# only listen on wlan0/usb0, so add one on loopback. Same server and checks as dropbear@.service.
+Conflicts=dropbear.service
+
+[Socket]
+ListenStream=22
+BindToDevice=lo
+Accept=yes
+
+[Install]
+WantedBy=sockets.target
