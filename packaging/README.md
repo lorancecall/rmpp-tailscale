@@ -6,3 +6,7 @@ The Vellum package of this add-on: `rmpp-tailscale`.
 sums in the VELBUILD on the default branch; the next build (daily, or
 `gh workflow run publish.yml -R lorancecall/rmpp-packages`) publishes it. Format and rules:
 [MODS.md](https://github.com/lorancecall/rmpp-packages/blob/main/MODS.md).
+
+Tailscale itself (`_tsver`) is kept current by `.github/workflows/tailscale-bump.yml`: every week it runs
+`packaging/bump-tailscale.sh` and, when pkgs.tailscale.com has a newer stable release, opens a PR that sets
+`_tsver`, raises `pkgrel` and updates the tarball's sum. Merge it to publish; no rmpp-tailscale release is needed.
