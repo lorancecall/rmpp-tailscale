@@ -1,0 +1,45 @@
+name: Release
+
+# The rmpp-tailscale package downloads its files from release v$pkgver. When a push to main changes pkgver
+# (for example a merged Tailscale bump from tailscale-bump.yml), create that release with the files of the
+# latest release: the add-on itself did not change, only the packaged Tailscale. Does nothing when the release
+# already exists (a release made by hand for a code change).
+on:
+  push:
+    branches: [main]
+    paths:
+      - packaging/rmpp-tailscale/VELBUILD
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create v$pkgver from the latest release's files
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          f=packaging/rmpp-tailscale/VELBUILD
+          ver=$(sed -n 's/^pkgver=//p' "$f")
+          ts=$(sed -n 's/^_tsver=//p' "$f")
+          [ -n "$ver" ] || { echo "no pkgver in $f" >&2; exit 1; }
+          if gh release view "v$ver" >/dev/null 2>&1; then
+            echo "release v$ver exists"; exit 0
+          fi
+          prev=$(gh release view --json tagName -q .tagName)
+          mkdir assets
+          gh release download "$prev" --dir assets
+          printf '%s\n' \
+            "- Packages Tailscale $ts." \
+            "- The add-on's files are the same as in $prev." \
+            "" \
+            "Install or update with \`vellum upgrade\` from [rmpp-packages](https://github.com/lorancecall/rmpp-packages), or with the [rmpp setup app](https://lorancecall.github.io/rmpp/). OS 3.29." \
+            > notes.md
+          gh release create "v$ver" assets/* --target "$GITHUB_SHA" --title "rmpp-tailscale $ver: Tailscale $ts" \
+            --notes-file notes.md --latest
