@@ -1,7 +1,7 @@
 maintainer="lorancecall <84116812+lorancecall@users.noreply.github.com>"
 pkgname=rmpp-tailscale
 pkgver=0.1.1
-pkgrel=2
+pkgrel=3
 _tsver=1.104.7
 upstream_author="lorancecall"
 category="network"
@@ -72,10 +72,13 @@ postinstall() {
 	mount -o remount,ro / || echo "note: / stays read-write until xochitl restarts"
 	/usr/lib/rmpp/boot.d/50-rmpp-tailscale
 	systemctl try-restart rmpp-tailscaled.service 2>/dev/null || true
-	# one xochitl restart per Vellum transaction: (re)arm the timer, so the last package script wins
+	# one xochitl restart per Vellum transaction: (re)arm the timer, so the last package script wins. The restart
+	# waits until apk.vellum has exited (a large package can outlast the timer); a restart already waiting
+	# covers this package too, so never restart directly while one is active.
 	systemctl stop rmpp-restart-xochitl.timer 2>/dev/null || true
+	systemctl is-active -q rmpp-restart-xochitl.service || \
 	systemd-run --quiet --unit=rmpp-restart-xochitl --on-active=15 --timer-property=AccuracySec=1s \
-		/bin/sh -c '[ -x /usr/lib/rmpp/restart ] && exec /usr/lib/rmpp/restart; systemctl reset-failed xochitl; systemctl restart xochitl' || \
+		/bin/sh -c 'i=0; while pidof apk.vellum >/dev/null && [ $i -lt 900 ]; do sleep 1; i=$((i + 1)); done; [ -x /usr/lib/rmpp/restart ] && exec /usr/lib/rmpp/restart; systemctl reset-failed xochitl; systemctl restart xochitl' || \
 		{ systemctl reset-failed xochitl 2>/dev/null || true; systemctl restart xochitl; }
 }
 
@@ -101,10 +104,13 @@ postupgrade() {
 	mount -o remount,ro / || echo "note: / stays read-write until xochitl restarts"
 	/usr/lib/rmpp/boot.d/50-rmpp-tailscale
 	systemctl try-restart rmpp-tailscaled.service 2>/dev/null || true
-	# one xochitl restart per Vellum transaction: (re)arm the timer, so the last package script wins
+	# one xochitl restart per Vellum transaction: (re)arm the timer, so the last package script wins. The restart
+	# waits until apk.vellum has exited (a large package can outlast the timer); a restart already waiting
+	# covers this package too, so never restart directly while one is active.
 	systemctl stop rmpp-restart-xochitl.timer 2>/dev/null || true
+	systemctl is-active -q rmpp-restart-xochitl.service || \
 	systemd-run --quiet --unit=rmpp-restart-xochitl --on-active=15 --timer-property=AccuracySec=1s \
-		/bin/sh -c '[ -x /usr/lib/rmpp/restart ] && exec /usr/lib/rmpp/restart; systemctl reset-failed xochitl; systemctl restart xochitl' || \
+		/bin/sh -c 'i=0; while pidof apk.vellum >/dev/null && [ $i -lt 900 ]; do sleep 1; i=$((i + 1)); done; [ -x /usr/lib/rmpp/restart ] && exec /usr/lib/rmpp/restart; systemctl reset-failed xochitl; systemctl restart xochitl' || \
 		{ systemctl reset-failed xochitl 2>/dev/null || true; systemctl restart xochitl; }
 }
 
@@ -135,10 +141,13 @@ predeinstall() {
 	[ ! -e /usr/lib/rmpp/rmpp-tailscale ] || mv /usr/lib/rmpp/rmpp-tailscale /usr/lib/rmpp/.trash/rmpp-tailscale.$$
 	sync
 	mount -o remount,ro / || echo "note: / stays read-write until xochitl restarts"
-	# one xochitl restart per Vellum transaction: (re)arm the timer, so the last package script wins
+	# one xochitl restart per Vellum transaction: (re)arm the timer, so the last package script wins. The restart
+	# waits until apk.vellum has exited (a large package can outlast the timer); a restart already waiting
+	# covers this package too, so never restart directly while one is active.
 	systemctl stop rmpp-restart-xochitl.timer 2>/dev/null || true
+	systemctl is-active -q rmpp-restart-xochitl.service || \
 	systemd-run --quiet --unit=rmpp-restart-xochitl --on-active=15 --timer-property=AccuracySec=1s \
-		/bin/sh -c '[ -x /usr/lib/rmpp/restart ] && exec /usr/lib/rmpp/restart; systemctl reset-failed xochitl; systemctl restart xochitl' || \
+		/bin/sh -c 'i=0; while pidof apk.vellum >/dev/null && [ $i -lt 900 ]; do sleep 1; i=$((i + 1)); done; [ -x /usr/lib/rmpp/restart ] && exec /usr/lib/rmpp/restart; systemctl reset-failed xochitl; systemctl restart xochitl' || \
 		{ systemctl reset-failed xochitl 2>/dev/null || true; systemctl restart xochitl; }
 	if [ "$VELLUM_PURGE" = "1" ]; then
 		rm -rf /home/root/.config/rmpp-tailscale /home/root/.local/share/rmpp-tailscale
