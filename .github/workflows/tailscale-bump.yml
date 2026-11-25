@@ -1,0 +1,43 @@
+name: Tailscale bump
+
+# Weekly: when Tailscale has a newer stable release, open a PR that bumps the packaged version.
+# Merging it is up to the maintainer; rmpp-packages then builds and publishes the package.
+on:
+  schedule:
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Bump _tsver
+        id: bump
+        run: |
+          v=$(sh packaging/bump-tailscale.sh)
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+
+      - name: Open PR
+        if: steps.bump.outputs.version != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          V: ${{ steps.bump.outputs.version }}
+        run: |
+          b="auto/tailscale-$V"
+          if git ls-remote --exit-code --heads origin "$b" >/dev/null; then
+            echo "$b already exists"; exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$b"
+          git commit -am "packaging: Tailscale $V"
+          git push origin "$b"
+          gh pr create --head "$b" --title "packaging: Tailscale $V" --body "Bumps the packaged Tailscale to $V (latest stable on pkgs.tailscale.com; tarball checked against its published SHA-256) and raises pkgrel.
+
+          After merging, rmpp-packages publishes it with its next build. Updating restarts tailscaled, which drops Tailscale SSH for a moment."
