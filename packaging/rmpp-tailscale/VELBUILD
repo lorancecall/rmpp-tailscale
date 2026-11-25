@@ -1,7 +1,7 @@
 maintainer="lorancecall <84116812+lorancecall@users.noreply.github.com>"
 pkgname=rmpp-tailscale
-pkgver=0.1.1
-pkgrel=3
+pkgver=0.1.2
+pkgrel=0
 _tsver=1.104.7
 upstream_author="lorancecall"
 category="network"
