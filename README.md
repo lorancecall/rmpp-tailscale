@@ -8,7 +8,7 @@
 scanning a QR code, see your tailnet, and reach the Paper Pro over SSH from anywhere. Runs without xovi and keeps
 working after a reboot.
 
-Made for and tested on the reMarkable Paper Pro with OS 3.29.1. Other reMarkable models are not supported.
+Made for and tested on the reMarkable Paper Pro with OS 3.29. Other reMarkable models are not supported.
 Updates for newer OS versions may take some time to follow.
 
 > Part of the **rmpp add-ons**, built on [rmpp-packages](https://github.com/lorancecall/rmpp-packages): it is
@@ -20,11 +20,11 @@ Updates for newer OS versions may take some time to follow.
 Start at **[rmpp-packages](https://github.com/lorancecall/rmpp-packages#install)**: it explains developer mode and
 has **rmpp setup**, the installer for all rmpp add-ons.
 
-- In rmpp setup (the desktop app or the script), tick **Tailscale VPN and remote SSH** (rmpp-tailscale), then
-  open Settings > Tailscale, turn it on and scan the QR code.
+- In rmpp setup (the desktop app or the script), tick **Tailscale VPN and remote SSH** (rmpp-tailscale; not selected by
+  default), then open Settings > Tailscale, turn it on and scan the QR code.
 - It installs `rmpp-preload` with it ([all packages and dependencies](https://github.com/lorancecall/rmpp-packages/blob/main/docs/packages.md)).
 - After a reMarkable OS update: **Restore** in rmpp setup.
-- Without rmpp setup, removing it, next to other mods, building it: [docs/install.md](docs/install.md).
+- Installing without rmpp setup, uninstalling, using it next to other mods, and building: [docs/install.md](docs/install.md).
 
 ## Use
 
