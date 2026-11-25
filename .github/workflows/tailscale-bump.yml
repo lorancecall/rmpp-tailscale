@@ -38,6 +38,6 @@ jobs:
           git switch -c "$b"
           git commit -am "packaging: Tailscale $V"
           git push origin "$b"
-          gh pr create --head "$b" --title "packaging: Tailscale $V" --body "Bumps the packaged Tailscale to $V (latest stable on pkgs.tailscale.com; tarball checked against its published SHA-256) and raises pkgrel.
+          gh pr create --head "$b" --title "packaging: Tailscale $V" --body "Bumps the packaged Tailscale to $V (latest stable on pkgs.tailscale.com; tarball checked against its published SHA-256) and bumps the patch version (pkgrel 0).
 
-          After merging, rmpp-packages publishes it with its next build. Updating restarts tailscaled, which drops Tailscale SSH for a moment."
+          Merging it creates the matching release (same files as the previous one, by release.yml); rmpp-packages then publishes it with its next build. Updating restarts tailscaled, which drops Tailscale SSH for a moment."
